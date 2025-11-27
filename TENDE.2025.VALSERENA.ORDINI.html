@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<title>Ordini Prodotti Valserena</title>
+<style>
+  body { font-family: Arial, sans-serif; margin: 20px; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 20px; table-layout: fixed; }
+  th, td { border: 1px solid #ccc; padding: 8px; text-align: left; word-wrap: break-word; }
+  th:nth-child(1), td:nth-child(1) { width: 40%; }
+  th:nth-child(2), td:nth-child(2) { width: 20%; }
+  th:nth-child(3), td:nth-child(3) { width: 20%; }
+  th:nth-child(4), td:nth-child(4) { width: 20%; }
+  th { background-color: #f2f2f2; }
+  .categoria { font-size: 22px; margin-top: 40px; font-weight: bold; }
+  .totale { font-size: 20px; font-weight: bold; margin-top: 20px; }
+  #riepilogo { display: none; margin-top: 20px; }
+  #ordineForm { margin-top: 20px; }
+  .btn { padding: 10px 20px; font-size: 16px; cursor: pointer; margin-top: 10px; }
+  .datiCliente { display: flex; gap: 20px; align-items: flex-start; margin-bottom: 10px; }
+  .datiCliente label { width: 100px; }
+  .datiCliente input { flex: 1; padding: 5px; }
+</style>
+</head>
+<body>
+
+<h1>Listino Prodotti Valserena 2025</h1>
+
+<h2>COMPILA QUI:</h2>
+<div id="ordineForm">
+  <div class="datiCliente">
+    <label for="nome">Nome:</label>
+    <input type="text" id="nome" required>
+    <label for="cognome">Cognome:</label>
+    <input type="text" id="cognome" required>
+    <label for="email">Email:</label>
+    <input type="email" id="email" required>
+  </div>
+</div>
+
+<div id="prodottiContainer"></div>
+<div class="totale">Totale: <span id="totale">0.00</span> €</div>
+<button class="btn" onclick="apriOrdine()">Ordina</button>
+
+<div id="riepilogo">
+<h2>Riepilogo ordine</h2>
+<table id="tabellaRiepilogo">
+<tr><th>Prodotto</th><th>Formato</th><th>Quantità</th><th>Prezzo unitario (€)</th></tr>
+</table>
+<div class="totale">Totale complessivo: <span id="totaleRiepilogo">0.00</span> €</div>
+<button class="btn" onclick="stampaRiepilogo()">Stampa / Salva PDF</button>
+<form id="formInvio" action="https://formspree.io/f/mangnpyn" method="POST" onsubmit="popolaRiepilogoMail()">
+  <input type="hidden" name="riepilogo" id="riepilogoHidden">
+  <button type="submit" class="btn">Conferma ordine</button>
+</form>
+</div>
+
+<script>
+const categorie = {
+  "CREME": [
+    ["Crema viso con iperico", "ml 50", 16.00],
+    ["Crema viso con olio di oliva", "ml 50", 6.00],
+    ["Crema viso per i segni dell'età", "ml 50", 16.00],
+    ["Crema viso con gelatina reale", "ml 50", 20.00],
+    ["Crema viso idratante", "ml 50", 16.00],
+    ["Crema viso alla propoli", "ml 50", 16.00],
+    ["Crema viso a base di aloe vera", "ml 50", 16.00],
+    ["Crema corpo all’olio d’oliva", "ml 150", 20.00],
+    ["Crema piedi", "ml 75", 14.00],
+    ["Crema mani formato famiglia", "ml 200", 11.00],
+    ["Crema mani alla malva", "ml 75", 8.50]
+  ],
+  "DEODORANTI": [
+    ["Deodorante con olio essenziale di lavanda", "ml 100", 8.00]
+  ],
+  "DETERGENTI": [
+    ["Latte detergente alla calendula", "ml 200", 10.00],
+    ["Tonico all'equiseto", "ml 200", 7.00],
+    ["Bagnodoccia con estratto di timo: magnolia", "ml 500", 10.00],
+    ["Bagnodoccia con estratto di timo: mandarino e sandalo", "ml 500", 10.00],
+    ["Bagnoschiuma all'edera e alla castagna", "ml 250", 8.00],
+    ["Shampoo all'ortica, salvia e rosmarino", "ml 250", 8.00],
+    ["Maschera capelli con estratto di salvia", "ml 200", 10.00],
+    ["Detergente intimo alla camomilla", "ml 200", 5.00],
+    ["Sapone liquido con estratto di malva: arancio amaro", "ml 250", 6.00],
+    ["Sapone liquido con estratto di malva: caprifoglio", "ml 250", 6.00],
+    ["Sapone liquido con estratto di malva: mughetto", "ml 250", 6.00],
+    ["Sapone liquido con estratto di malva: lavanda", "ml 250", 6.00],
+    ["Sapone liquido con estratto di malva: rosa", "ml 250", 6.00],
+    ["Sapone liquido con estratto di malva: sandalo", "ml 250", 6.00],
+    ["Sapone liquido con estratto di malva: tè verde", "ml 250", 6.00],
+    ["Sapone di Aleppo", "gr 120", 6.50],
+    ["Saponette artigianali varie", "gr 100", 4.50]
+  ],
+  "PROFUMI": [
+    ["Acqua di lavanda", "ml 50", 15.00],
+    ["Acqua di lavanda", "ml 100", 18.00],
+    ["Acqua di colonia", "ml 50", 15.00],
+    ["Acqua di colonia", "ml 100", 18.00],
+    ["Acqua di sandalo", "ml 50", 15.00],
+    ["Acqua di sandalo", "ml 100", 18.00],
+    ["Cofanetto acque di profumo Cantico dei Cantici", "3 x 30 ml", 21.00],
+    ["Cofanetto acque di profumo Fragranze della terra di Toscana", "3 x 30 ml", 21.00],
+    ["Acqua di profumo Rosa", "ml 50", 17.00],
+    ["Acqua di profumo Caprifoglio", "ml 50", 17.00],
+    ["Acqua di profumo Nardo e Rosa", "ml 50", 17.00],
+    ["Acqua di profumo Giardino di melograni", "ml 50", 17.00],
+    ["Acqua di profumo Tempo del canto", "ml 50", 17.00],
+    ["Acqua di profumo Giglio delle valli", "ml 50", 17.00]
+  ],
+  "PROFUMI D'AMBIENTE": [
+    ["Ambra e legno di cedro", "ml 200", 26.00],
+    ["Vaniglia e mandarino", "ml 200", 26.00],
+    ["Cannella speziata", "ml 200", 26.00],
+    ["Spray ambientale marino", "ml 100", 5.00]
+  ],
+  "DOPOBARBA": [
+    ["Dopobarba fluido", "ml 50", 10.00],
+    ["Lozione dopobarba", "ml 100", 15.00]
+  ],
+  "CONFEZIONI IDEE REGALO": [
+    ["Blu - Oro", "", 46.20],
+    ["Timo", "", 22.50],
+    ["Edera", "", 27.00],
+    ["Trio Aloe", "", 26.70],
+    ["Trio Zenzero", "", 26.70],
+    ["Duo Corpo", "", 21.00],
+    ["Duo Mani", "", 15.50],
+    ["Dall'orto 3", "", 26.00],
+    ["Caprifoglio. La Linea", "", 29.00],
+    ["Rosa. La Linea", "", 29.00],
+    ["Sandalo. La Linea", "", 26.50],
+    ["Confezione Giardino dei Melograni", "", 31.50]
+  ],
+  "LIQUORI": [
+    ["Nocino", "cl 70", 16.90],
+    ["Nocino", "cl 20", 6.50],
+    ["Aloysia", "cl 50", 12.00],
+    ["Aloysia", "cl 20", 6.50]
+  ],
+  "ORTO": [
+    ["Zucchine sott'olio", "360gr", 8.50],
+    ["Melanzane sott'olio", "360gr", 2.00],
+    ["Confettura di cocomero verde", "300gr", 6.50]
+  ]
+};
+
+function generaTabella() {
+  const container = document.getElementById("prodottiContainer");
+  for (let categoria in categorie) {
+    const prodotti = categorie[categoria];
+    let html = `<div class='categoria'>${categoria}</div>`;
+    html += `<table><tr><th>Prodotto</th><th>Formato</th><th>Prezzo (€)</th><th>Quantità</th></tr>`;
+    prodotti.forEach(p => {
+      html += `<tr>
+        <td>${p[0]}</td>
+        <td>${p[1]}</td>
+        <td>${p[2].toFixed(2)}</td>
+        <td><input type='number' min='0' value='0' data-prezzo='${p[2]}' onchange='calcolaTotale()'></td>
+      </tr>`;
+    });
+    html += `</table>`;
+    container.innerHTML += html;
+  }
+}
+
+generaTabella();
+
+function calcolaTotale() {
+  let totale = 0;
+  document.querySelectorAll("input[type='number']").forEach(input => {
+    totale += input.value * parseFloat(input.dataset.prezzo);
+  });
+  document.getElementById("totale").innerText = totale.toFixed(2);
+}
+
+function apriOrdine() {
+  const riepilogo = document.getElementById("riepilogo");
+  const tabRiepilogo = document.getElementById("tabellaRiepilogo");
+  tabRiepilogo.innerHTML = `<tr><th>Prodotto</th><th>Formato</th><th>Quantità</th><th>Prezzo unitario (€)</th></tr>`;
+  let totaleRiepilogo = 0;
+
+  document.querySelectorAll("input[type='number']").forEach(input => {
+    if(input.value > 0){
+      const riga = input.parentElement.parentElement;
+      totaleRiepilogo += input.value * parseFloat(input.dataset.prezzo);
+      tabRiepilogo.innerHTML += `<tr>
+        <td>${riga.cells[0].innerText}</td>
+        <td>${riga.cells[1].innerText}</td>
+        <td>${input.value}</td>
+        <td>${parseFloat(input.dataset.prezzo).toFixed(2)} €</td>
+      </tr>`;
+    }
+  });
+
+  document.getElementById("totaleRiepilogo").innerText = totaleRiepilogo.toFixed(2);
+  riepilogo.style.display = "block";
+  window.scrollTo(0, document.body.scrollHeight);
+}
+
+function popolaRiepilogoMail() {
+  const nome = document.getElementById("nome").value;
+  const cognome = document.getElementById("cognome").value;
+  const email = document.getElementById("email").value;
+
+  let riepilogoTesto = `DATI CLIENTE\nNome: ${nome}\nCognome: ${cognome}\nEmail: ${email}\n\n`;
+  riepilogoTesto += `Prodotto | Formato | Quantità | Prezzo unitario (€)\n`;
+  riepilogoTesto += `-----------------------------------------------\n`;
+
+  let totale = 0;
+
+  document.querySelectorAll("input[type='number']").forEach(input => {
+    if(input.value > 0){
+      const riga = input.parentElement.parentElement;
+      const prodotto = riga.cells[0].innerText;
+      const formato = riga.cells[1].innerText;
+      const quantita = input.value;
+      const prezzoUnit = parseFloat(input.dataset.prezzo).toFixed(2);
+      totale += quantita * parseFloat(prezzoUnit);
+      riepilogoTesto += `${prodotto} | ${formato} | ${quantita} | ${prezzoUnit} €\n`;
+    }
+  });
+
+  riepilogoTesto += `\nTotale complessivo: ${totale.toFixed(2)} €`;
+  document.getElementById("riepilogoHidden").value = riepilogoTesto;
+}
+
+function stampaRiepilogo() {
+  const nome = document.getElementById("nome").value;
+  const cognome = document.getElementById("cognome").value;
+  const email = document.getElementById("email").value;
+
+  let contenuto = `<h2>Riepilogo ordine</h2>`;
+  contenuto += `<h3>DATI:</h3>`;
+  contenuto += `<p>Nome: ${nome}<br>Cognome: ${cognome}<br>Email: ${email}</p>`;
+  contenuto += `<table><tr><th>Prodotto</th><th>Formato</th><th>Quantità</th><th>Prezzo unitario (€)</th></tr>`;
+
+  let totale = 0;
+
+  document.querySelectorAll("input[type='number']").forEach(input => {
+    if(input.value > 0){
+      const riga = input.parentElement.parentElement;
+      const prodotto = riga.cells[0].innerText;
+      const formato = riga.cells[1].innerText;
+      const quantita = input.value;
+      const prezzoUnit = parseFloat(input.dataset.prezzo).toFixed(2);
+      totale += quantita * parseFloat(prezzoUnit);
+      contenuto += `<tr><td>${prodotto}</td><td>${formato}</td><td>${quantita}</td><td>${prezzoUnit} €</td></tr>`;
+    }
+  });
+
+  contenuto += `</table>`;
+  contenuto += `<p style="margin-top:20px;">Totale complessivo: ${totale.toFixed(2)} €</p>`;
+  contenuto += `<button onclick="window.print()">Stampa / Salva PDF</button>`;
+  contenuto += `<p>GRAZIE!</p>`;
+
+  const finestra = window.open('', '', 'width=800,height=600');
+  finestra.document.write(contenuto);
+  finestra.document.close();
+}
+</script>
+
+</body>
+</html>
